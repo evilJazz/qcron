@@ -8,32 +8,49 @@
 class QCron : public QObject
 {
     Q_OBJECT
-
+    Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY enabledChanged)
+    Q_PROPERTY(QString pattern READ pattern WRITE setPattern NOTIFY patternChanged)
 public:
     QCron();
     QCron(const QString & pattern);
     ~QCron();
 
+    bool enabled() const
+        { return _enabled; }
+
+    void setEnabled(bool enabled);
+
+    const QString &pattern() const;
+    void setPattern(const QString &pattern);
+
     // Accessors.
-    bool isValid() const
+    Q_INVOKABLE bool isValid() const
         { return _is_valid; }
 
-    const QString & error() const
+    Q_INVOKABLE const QString & error() const
         { return _error; }
 
     // Features.
 
-    QDateTime next();
-    QDateTime next(QDateTime dt);
+    Q_INVOKABLE QDateTime next();
+    Q_INVOKABLE QDateTime next(QDateTime dt);
     void catchUp(QDateTime & dt, EField field, int value);
-    bool match(const QDateTime & dt) const;
+    Q_INVOKABLE bool match(const QDateTime & dt) const;
     void add(QDateTime & dt, EField field, int value);
 
 signals:
+    void enabledChanged();
+    void patternChanged();
+
     void activated();
+    void triggered();
     void deactivated();
 
+    void patternError(const QString &errorMessage);
+
 private:
+    bool _enabled;
+    QString _pattern;
     bool _is_valid;
     bool _is_active;
     QString _error;

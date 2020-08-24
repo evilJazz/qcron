@@ -21,10 +21,7 @@ QCron::
 QCron(const QString & pattern)
 {
     _init();
-    _parsePattern(pattern);
-    if (_is_valid) {
-        _checkState();
-    }
+    setPattern(pattern);
 }
 
 /******************************************************************************/
@@ -38,8 +35,44 @@ QCron::
 
 void
 QCron::
+setEnabled(bool enabled)
+{
+    if (enabled != _enabled)
+    {
+        _enabled = enabled;
+        emit enabledChanged();
+        _checkState();
+    }
+}
+
+/******************************************************************************/
+
+const
+QString &
+QCron::pattern() const
+{
+    return _pattern;
+}
+
+/******************************************************************************/
+
+void
+QCron::
+setPattern(const QString & pattern)
+{
+    _parsePattern(pattern);
+    if (_is_valid) {
+        _checkState();
+    }
+}
+
+/******************************************************************************/
+
+void
+QCron::
 _init()
 {
+    _enabled = true;
     _is_valid = true;
     _is_active = false;
     _fields[0].setField(MINUTE);
@@ -56,26 +89,31 @@ void
 QCron::
 _checkState()
 {
-    int interval_ms = 0;
-    if (match(QDateTime::currentDateTime()))
+    if (_enabled)
     {
-        emit activated();
-        _is_active = true;
-        interval_ms = 1000 * 60; // one minute
-    }
-    else
-    {
-        if (_is_active)
+        int interval_ms = 0;
+        if (match(QDateTime::currentDateTime()))
         {
-            emit deactivated();
-            _is_active = false;
+            _is_active = true;
+            emit activated();
+            interval_ms = 1000 * 60; // one minute
+
+            emit triggered();
         }
-        interval_ms = QDateTime::currentDateTime().secsTo(next()) * 1000;
+        else
+        {
+            if (_is_active)
+            {
+                emit deactivated();
+                _is_active = false;
+            }
+            interval_ms = QDateTime::currentDateTime().secsTo(next()) * 1000;
+        }
+        QTimer::singleShot(interval_ms,
+                           Qt::VeryCoarseTimer,
+                           this,
+                           SLOT(_checkState()));
     }
-    QTimer::singleShot(interval_ms,
-                       Qt::VeryCoarseTimer,
-                       this,
-                       SLOT(_checkState()));
 }
 
 /******************************************************************************/
@@ -86,6 +124,7 @@ _setError(const QString & error)
 {
     _is_valid = false;
     _error = error;
+    emit patternError(error);
 }
 
 /******************************************************************************/
@@ -100,6 +139,7 @@ _parsePattern(const QString & pattern)
         return;
     }
     QStringList fields = pattern.simplified().split(" ", QString::SkipEmptyParts);
+    _pattern = pattern;
     int nb_fields = fields.size();
     if (nb_fields != 6)
     {
@@ -119,6 +159,8 @@ _parsePattern(const QString & pattern)
     {
         _setError(e.msg());
     }
+
+    emit patternChanged();
 }
 
 /******************************************************************************/
